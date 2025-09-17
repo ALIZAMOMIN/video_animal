@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dog Behaviour Detection — Ultimate UI</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f0b16; --panel:#1b1330; --accent:#805ad5; --accent-2:#6b46c1; --muted:#9aa3b2;
+  --glass: rgba(255,255,255,0.04); --success:#3ad29f; --danger:#ff6b6b;
+  --card-radius:14px; --shadow: 0 6px 18px rgba(3,2,6,0.6);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0a0710);color:#e6e9ef}
+
+.app{display:grid;grid-template-columns: 260px 1fr;gap:28px;max-width:1200px;margin:28px auto;padding:28px;}
+
+/* SIDEBAR */
+.sidebar{background:linear-gradient(180deg,var(--panel), rgba(27,19,48,0.9));border-radius:var(--card-radius);padding:18px;box-shadow:var(--shadow);height:calc(100vh - 84px);position:sticky;top:28px;overflow:auto;}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700}
+.brand h1{font-size:16px;margin:0}
+nav{margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:var(--muted);cursor:pointer;margin-bottom:6px}
+.nav-item.active{background:linear-gradient(90deg, rgba(128,90,213,0.12), rgba(107,70,193,0.06));color:#fff}
+.small{font-size:12px;color:var(--muted)}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;gap:18px}
+.header{display:flex;justify-content:space-between;align-items:center}
+.title{font-size:22px}
+.user{display:flex;gap:12px;align-items:center}
+
+/* Buttons for login/signup */
+.btn-login{background:var(--accent-2);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+.btn-signup{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+
+/* GRID LAYOUT */
+.grid{display:grid;grid-template-columns: 1fr 380px;gap:18px}
+
+/* PANELS */
+.panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:16px;border-radius:12px;box-shadow:var(--shadow)}
+.panel h3{margin:0 0 12px 0}
+
+/* Live video */
+.video-wrap{display:flex;flex-direction:column;gap:12px}
+video{width:100%;max-height:420px;border-radius:10px;background:#000;display:block}
+.controls{display:flex;gap:8px;align-items:center}
+.btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+.btn.warn{background:var(--danger)}
+
+/* Summary */
+.summary{display:flex;flex-direction:column;gap:12px}
+.stats{display:flex;gap:8px;align-items:center}
+.stat{flex:1;background:var(--glass);padding:10px;border-radius:10px;text-align:center}
+
+/* timeline */
+.timeline{max-height:220px;overflow:auto;padding:8px;background:rgba(255,255,255,0.02);border-radius:10px}
+.timeline-item{display:flex;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:6px}
+.tag{padding:6px 10px;border-radius:999px;font-size:12px}
+.tag.eat{background:rgba(255,165,80,0.12)}
+.tag.sleep{background:rgba(100,116,255,0.12)}
+.tag.run{background:rgba(90,255,200,0.08)}
+.tag.agg{background:rgba(255,100,100,0.12)}
+.tag.bark{background:rgba(255,215,0,0.2)} /* new */
+
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px}
+.alert.warn{background:linear-gradient(90deg, rgba(255,107,107,0.12), rgba(255,107,107,0.05));color:#fff}
+.alert.info{background:linear-gradient(90deg, rgba(128,90,213,0.08), rgba(128,90,213,0.03));color:#fff}
+
+.heatmap{height:200px;border-radius:10px;overflow:hidden}
+.controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+@media (max-width:980px){
+  .app{grid-template-columns: 1fr; padding:16px}
+  .sidebar{height:auto;position:relative}
+  .grid{grid-template-columns:1fr}
+}
+
+/* Login overlay */
+#loginOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:10000;display:none;}
+.login-box{background:var(--panel);padding:28px;border-radius:12px;box-shadow:var(--shadow);width:320px;display:flex;flex-direction:column;gap:14px}
+.login-box h2{margin:0;color:#fff;text-align:center}
+.login-box input{padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.05);color:#fff}
+.login-box button{padding:10px;border-radius:8px;border:none;background:var(--accent-2);color:#fff;font-weight:600;cursor:pointer}
+.login-box .toggle-login{background:transparent;color:var(--accent);text-align:center;border:none;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar panel">
+<div class="brand">
+<div class="logo">DB</div>
+<div>
+<h1>Dog Behaviour</h1>
+<div class="small">AI | CV UI</div>
+</div>
+</div>
+<nav>
+<div class="nav-item active">🏠 Home</div>
+<div class="nav-item">📊 Dashboard</div>
+<div class="nav-item">🎥 Detection</div>
+<div class="nav-item">📁 Reports</div>
+<div class="nav-item">⚙️ Settings</div>
+</nav>
+<div style="margin-top:20px" class="small">Features</div>
+<ul style="padding-left:18px;color:var(--muted);margin-top:8px">
+<li>Real-time video & webcam</li>
+<li>Bark + behaviour fusion</li>
+<li>Health & stress monitoring</li>
+<li>Play vs Rest ratio</li>
+<li>Breed-specific insights</li>
+<li>Heatmap of movement</li>
+<li>Export PDF / CSV reports</li>
+</ul>
+</aside>
+
+<main class="main">
+<div class="header">
+<div>
+<div class="title">Dog Behaviour Detection — Ultimate UI</div>
+<div class="small">Dark purplish UI • AIML mini project</div>
+</div>
+<div class="user">
+<button class="btn-login" id="loginBtn">Login</button>
+<button class="btn-signup" id="signupBtn">Signup</button>
+</div>
+</div>
+
+<section class="grid">
+<div>
+<!-- Video Panel -->
+<div class="panel video-wrap">
+<h3>Live Detection</h3>
+<video id="videoPlayer" controls muted playsinline></video>
+<div class="controls">
+<label class="btn" for="fileUpload">Upload Video</label>
+<input id="fileUpload" type="file" accept="video/*" style="display:none" />
+<button id="startCam" class="btn secondary">Use Webcam</button>
+<button id="analyzeBtn" class="btn">Analyze</button>
+<button id="stopBtn" class="btn warn">Stop</button>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+<div class="small">Model: <strong>DogNet-Behaviour-v1</strong></div>
+<div class="small">Mode: <strong id="modeLabel">Live</strong></div>
+</div>
+</div>
+
+<!-- Behaviour Timeline -->
+<div class="panel" style="margin-top:12px">
+<h3>Behaviour Timeline</h3>
+<div class="timeline" id="timeline"></div>
+</div>
+
+<!-- Actions -->
+<div class="panel" style="margin-top:12px">
+<h3>Actions</h3>
+<div class="controls-row">
+<button id="exportPdf" class="btn">Export PDF Report</button>
+<button id="exportCsv" class="btn secondary">Export CSV</button>
+<button id="explainBtn" class="btn">Toggle Explainability</button>
+<label class="btn secondary" style="cursor:pointer">
+  <input id="predictToggle" type="checkbox" style="margin-right:8px"> Predictive Mode
+</label>
+<label class="btn secondary" style="cursor:pointer">
+  <input id="voiceToggle" type="checkbox" style="margin-right:8px"> Voice Alerts
+</label>
+</div>
+</div>
+</div>
+
+<aside>
+<!-- Summary Panel -->
+<div class="panel summary">
+<h3>Behaviour Summary</h3>
+<canvas id="doughnutChart" style="width:100%;height:200px"></canvas>
+<div class="stats" style="margin-top:6px">
+<div class="stat">
+<div class="small">Active</div>
+<div style="font-size:20px" id="statActive">--</div>
+</div>
+<div class="stat">
+<div class="small">Resting</div>
+<div style="font-size:20px" id="statRest">--</div>
+</div>
+<div class="stat">
+<div class="small">Aggressive</div>
+<div style="font-size:20px" id="statAgg">--</div>
+</div>
+<div class="stat">
+<div class="small">Play/Rest</div>
+<div style="font-size:20px" id="statPlayRest">--</div>
+</div>
+</div>
+</div>
+
+<!-- Health & Stress -->
+<div class="panel" style="margin-top:12px">
+<h3>Health & Stress Monitoring</h3>
+<div class="stats" style="margin-top:6px">
+<div class="stat">
+<div class="small">Stress Level</div>
+<div style="font-size:20px" id="statStress">--</div>
+</div>
+<div class="stat">
+<div class="small">Health</div>
+<div style="font-size:20px" id="statHealth">--</div>
+</div>
+</div>
+</div>
+
+<!-- Breed Insights -->
+<div class="panel" style="margin-top:12px">
+<h3>Breed Insights</h3>
+<div class="small">Breed: Labrador Retriever</div>
+<div class="small">Daily Activity Target: 120 mins</div>
+<div class="small" id="breedStatus">Current Activity: -- mins</div>
+</div>
+
+<!-- Alerts -->
+<div class="panel" style="margin-top:12px">
+<h3>Alerts</h3>
+<div class="alerts" id="alerts"></div>
+</div>
+
+<!-- Movement Heatmap -->
+<div class="panel" style="margin-top:12px">
+<h3>Movement Heatmap</h3>
+<div class="heatmap"><canvas id="heatmapCanvas" width="360" height="200"></canvas></div>
+<div class="small" style="margin-top:8px;color:var(--muted)">Heatmap is a motion-intensity visualization.</div>
+</div>
+
+<!-- Dog Selection -->
+<div class="panel" style="margin-top:12px">
+<h3>Dog Selection</h3>
+<select id="dogSelect" style="width:100%;padding:8px;border-radius:8px;background:var(--panel);color:#fff;border:none">
+<option value="dog1">Buddy</option>
+<option value="dog2">Max</option>
+<option value="dog3">Bella</option>
+</select>
+</div>
+</aside>
+</section>
+
+<footer style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+<div class="small">Tip: Place the camera at chest height and ensure good lighting.</div>
+<div class="small">Live UI — integrate your AIML model for production.</div>
+</footer>
+</main>
+</div>
+
+<!-- Login Overlay -->
+<div id="loginOverlay">
+<div class="login-box">
+<h2>Login</h2>
+<input type="text" placeholder="Username">
+<input type="password" placeholder="Password">
+<button id="loginSubmit">Login</button>
+<button class="toggle-login" id="toggleToSignup">Don't have an account? Signup</button>
+</div>
+</div>
+
+<script>
+// Login overlay
+const loginOverlay = document.getElementById('loginOverlay');
+document.getElementById('loginBtn').addEventListener('click', ()=>{loginOverlay.style.display='flex';});
+document.getElementById('signupBtn').addEventListener('click', ()=>{loginOverlay.style.display='flex';});
+document.getElementById('toggleToSignup').addEventListener('click', ()=>{alert('Redirect to Signup form');});
+loginOverlay.addEventListener('click', e=>{if(e.target===loginOverlay) loginOverlay.style.display='none';});
+
+// Voice alert
+function speakBehaviour(text) {
+  if(!('speechSynthesis' in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang='en-US'; utterance.pitch=1; utterance.rate=1;
+  speechSynthesis.speak(utterance);
+}
+
+// Your existing video, chart, analysis, timeline code
+const fileUpload = document.getElementById('fileUpload');
+const video = document.getElementById('videoPlayer');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const startCam = document.getElementById('startCam');
+const stopBtn = document.getElementById('stopBtn');
+const timelineEl = document.getElementById('timeline');
+const alertsEl = document.getElementById('alerts');
+const modeLabel = document.getElementById('modeLabel');
+const explainBtn = document.getElementById('explainBtn');
+const predictToggle = document.getElementById('predictToggle');
+const voiceToggle = document.getElementById('voiceToggle');
+const statPlayRest = document.getElementById('statPlayRest');
+const statStress = document.getElementById('statStress');
+const statHealth = document.getElementById('statHealth');
+const breedStatus = document.getElementById('breedStatus');
+const dogSelect = document.getElementById('dogSelect');
+
+let camStream=null,analyzerRunning=false,explain=false;
+const audioAgg=new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+
+fileUpload.addEventListener('change', e => { const file=e.target.files[0]; if(!file) return; const url=URL.createObjectURL(file); stopCamera(); video.src=url; video.play(); modeLabel.innerText='Video';});
+startCam.addEventListener('click', async()=>{ try{ camStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); video.srcObject=camStream; video.play(); modeLabel.innerText='Webcam'; }catch(err){alert('Camera access denied or not available')}});
+stopBtn.addEventListener('click', ()=>{ stopCamera(); video.pause(); video.removeAttribute('src'); video.load(); modeLabel.innerText='Live';});
+function stopCamera(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}}
+
+// Chart setup
+const ctx = document.getElementById('doughnutChart');
+const chart = new Chart(ctx, {
+type:'doughnut',
+data:{labels:['Eating','Sleeping','Running','Aggressive','Barking','Other'],datasets:[{data:[20,30,25,5,5,15],backgroundColor:['#f6ad55','#a3bffa','#7dd3fc','#ff6b6b','#ffd700','#9aa3b2'],borderWidth:0}]},
+options:{plugins:{legend:{position:'right',labels:{color:'#e6e9ef'}}}}
+});
+
+// Heatmap mock
+const heatCtx = document.getElementById('heatmapCanvas').getContext('2d');
+function drawHeatmap(){const w=360,h=200;heatCtx.clearRect(0,0,w,h);heatCtx.fillStyle='#0e0714';heatCtx.fillRect(0,0,w,h);for(let i=0;i<8;i++){const x=Math.random()*w;const y=Math.random()*h;const r=20+Math.random()*60;const g=heatCtx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(128,90,213,0.18)');g.addColorStop(1,'rgba(128,90,213,0)');heatCtx.fillStyle=g;heatCtx.beginPath();heatCtx.arc(x,y,r,0,Math.PI*2);heatCtx.fill();}}
+drawHeatmap();
+
+// Simulated analysis
+function simulateAnalysis(){
+  timelineEl.innerHTML='';alertsEl.innerHTML='';
+  const behaviours=['Eating','Sleeping','Running','Aggressive','Barking','Other'];
+  const tags={'Eating':'eat','Sleeping':'sleep','Running':'run','Aggressive':'agg','Barking':'bark','Other':'other'};
+  const segments=[]; let time=0;
+  for(let i=0;i<8;i++){const dur=Math.floor(Math.random()*60)+5; const b=behaviours[Math.floor(Math.random()*behaviours.length)]; segments.push({start:time,end:time+dur,behaviour:b}); time+=dur;}
+
+  // Timeline + voice
+  segments.forEach(s=>{
+    const div=document.createElement('div');div.className='timeline-item';
+    const left=document.createElement('div');left.innerHTML=`<strong>${formatTime(s.start)}</strong> - ${formatTime(s.end)}`;
+    const right=document.createElement('div');const tag=document.createElement('span');tag.className='tag '+(tags[s.behaviour]||'other');tag.textContent=s.behaviour;
+    right.appendChild(tag); div.appendChild(left); div.appendChild(right); timelineEl.appendChild(div);
+    if(voiceToggle.checked) speakBehaviour(`Detected ${s.behaviour} behaviour`);
+  });
+
+  // Chart
+  const counts={'Eating':0,'Sleeping':0,'Running':0,'Aggressive':0,'Barking':0,'Other':0};
+  segments.forEach(s=>counts[s.behaviour]+=(s.end-s.start));
+  chart.data.datasets[0].data=[counts.Eating,counts.Sleeping,counts.Running,counts.Aggressive,counts.Barking,counts.Other]; chart.update();
+
+  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+  document.getElementById('statActive').innerText=Math.round(((counts.Running+counts.Eating)/total)*100)+'%';
+  document.getElementById('statRest').innerText=Math.round((counts.Sleeping/total)*100)+'%';
+  document.getElementById('statAgg').innerText=Math.round((counts.Aggressive/total)*100)+'%';
+  statPlayRest.innerText=Math.round((counts.Running+counts.Eating)/counts.Sleeping)+' : 1';
+
+  statStress.innerText=Math.floor(Math.random()*50+10)+'%';
+  statHealth.innerText=Math.floor(Math.random()*50+50)+'%';
+  breedStatus.innerText='Current Activity: '+Math.floor(Math.random()*120)+' mins';
+
+  if(counts.Aggressive>10){const a=document.createElement('div');a.className='alert warn';a.innerHTML='⚠️ <strong>Aggressive behaviour detected</strong>';alertsEl.appendChild(a); audioAgg.play();}
+  else{const a=document.createElement('div');a.className='alert info';a.innerHTML='✅ Behaviour normal';alertsEl.appendChild(a);}
+  if(counts.Barking>0){const b=document.createElement('div');b.className='alert info';b.innerHTML='🐶 Bark detected — emotion: '+(Math.random()>0.5?'Playful':'Anxious');alertsEl.appendChild(b);}
+  if(predictToggle.checked){const p=document.createElement('div');p.className='small';p.style.marginTop='8px';p.style.color='var(--muted)'; p.innerHTML='Predictive mode: Likely next behaviour — <strong>'+(Math.random()>0.6?'Sleeping':'Running')+'</strong>'; alertsEl.appendChild(p);}
+  if(explain) showExplainOverlay(); else removeExplainOverlay();
+  drawHeatmap();
+}
+
+function formatTime(s){const mm=String(Math.floor(s/60)).padStart(2,'0');const ss=String(s%60).padStart(2,'0');return mm+':'+ss;}
+
+analyzeBtn.addEventListener('click', ()=>{if(!video.src && !video.srcObject){alert('Please upload a video or start webcam first.');return} simulateAnalysis(); analyzerRunning=true;});
+explainBtn.addEventListener('click', ()=>{explain=!explain;if(analyzerRunning) simulateAnalysis();});
+dogSelect.addEventListener('change', ()=>{simulateAnalysis();});
+document.addEventListener('keydown',(e)=>{if(e.key==='Enter') analyzeBtn.click();});
+window.addEventListener('unload',()=>{stopCamera(); removeExplainOverlay();});
+
+// PDF & CSV
+document.getElementById('exportPdf').addEventListener('click', async ()=>{
+const { jsPDF } = window.jspdf; const doc = new jsPDF({orientation:'landscape'}); const el = document.querySelector('.app'); const canvas = await html2canvas(el, {scale:1.5}); const imgData = canvas.toDataURL('image/png'); const imgProps = doc.getImageProperties(imgData); const pdfWidth = doc.internal.pageSize.getWidth(); const pdfHeight = (imgProps.height * pdfWidth)/imgProps.width; doc.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight); doc.save('dog_behaviour_report.pdf');});
+document.getElementById('exportCsv').addEventListener('click', ()=>{
+const labels=chart.data.labels; const values=chart.data.datasets[0].data; let csv='Behaviour,Seconds\n'; for(let i=0;i<labels.length;i++) csv+=`${labels[i]},${values[i]}\n`; const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a');a.href=url;a.download='behaviour_summary.csv';a.click(); URL.revokeObjectURL(url);});
+
+// Explain overlay
+function showExplainOverlay(){removeExplainOverlay(); const ov=document.createElement('div');ov.id='explainOv';ov.style.position='absolute';ov.style.left=video.getBoundingClientRect().left+'px';ov.style.top=video.getBoundingClientRect().top+'px';ov.style.pointerEvents='none';ov.style.width=video.clientWidth+'px';ov.style.height=video.clientHeight+'px';ov.style.zIndex=9999;document.body.appendChild(ov);for(let i=0;i<3;i++){const b=document.createElement('div');b.style.position='absolute';b.style.left=(20+i*80)+'px';b.style.top=(30+i*30)+'px';b.style.width='80px';b.style.height='80px';b.style.border='2px dashed rgba(255,255,255,0.6)';b.style.borderRadius='8px';b.style.boxShadow='0 6px 16px rgba(0,0,0,0.6)';b.style.backdropFilter='blur(4px)';b.style.opacity=0.95;ov.appendChild(b);}}
+function removeExplainOverlay(){const o=document.getElementById('explainOv');if(o)o.remove();}
+</script>
+</body>
+</html>
+

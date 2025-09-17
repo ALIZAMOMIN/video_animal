@@ -1,0 +1,2 @@
+FPS is how many still pictures are swapped on screen per second. 
+The higher the FPS, the faster the frames change → and the smoother the motion looks.
